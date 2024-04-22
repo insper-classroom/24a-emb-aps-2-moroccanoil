@@ -25,24 +25,36 @@ def press_key(axis, value):
     if value == 1:
         if value +10*axis == 1:
             device.emit(uinput.KEY_A, 1)
+            sleep(0.1)
+            device.emit(uinput.KEY_A, 0)
         
-        elif value +10*axis == 10:
+        if value +10*axis == 10:
             device.emit(uinput.KEY_LEFT, 1)
+            sleep
+            device.emit(uinput.KEY_LEFT, 0)
     
-    elif value == 2:
+    if value == 2:
         if value +10*axis == 2:
             device.emit(uinput.KEY_D, 1)
+            sleep(0.1)
+            device.emit(uinput.KEY_D, 0)
         
-        elif value +10*axis == 20:
+        if value +10*axis == 20:
             device.emit(uinput.KEY_RIGHT, 1)
+            sleep(0.1)
+            device.emit(uinput.KEY_RIGHT, 0)
     
     #botao vermelho pula
-    elif value == 3:
+    if value == 3:
         if value +10*axis == 3:
             device.emit(uinput.KEY_W, 1)
+            sleep(0.1)
+            device.emit(uinput.KEY_W, 0)
         
-        elif value +10*axis == 30:
+        if value +10*axis == 30:
             device.emit(uinput.KEY_UP, 1)
+            sleep(0.1)
+            device.emit(uinput.KEY_UP, 0)
 
 
 # def move_mouse(axis, value):
