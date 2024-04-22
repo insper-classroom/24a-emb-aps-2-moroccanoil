@@ -13,16 +13,14 @@
 #include <math.h>
 #include <stdlib.h>
 
-const int HC06_UART_ID = 1;
-const int HC06_BAUD_RATE = 9600;
+// const int HC06_UART_ID = 1;
+// const int HC06_BAUD_RATE = 9600;
 
-const int HC06_TX_PIN = 4;
-const int HC06_RX_PIN = 5;
+// const int HC06_TX_PIN = 4;
+// const int HC06_RX_PIN = 5;
 
 const int BUTTON_JUMP_RED_PIN = 21;
 const int BUTTON_SWITCH_BLUE_PIN = 20;
-
-
 
 const int LED_RED_PIN = 7;
 const int LED_BLUE_PIN = 6;
@@ -33,9 +31,10 @@ const int ADC0_CHANNEL = 0;
 // const int ADC1_Y = 27; //y
 // const int ADC1_CHANNEL = 1;
 
-int volatile person_id = 0;
+int volatile btn_id = 0;
 
 QueueHandle_t xQueueAdc;
+QueueHandle_t xQueueBtn;
 
 typedef struct adc {
     int axis;
@@ -47,29 +46,70 @@ int adjust_scale(int adc_value) {
     int adjusted_value = ((adc_value - 2048) * 255) / 2048;
 
     // Aplicar a zona morta
-    if (adjusted_value > -150 && adjusted_value < 150) {
+    if (adjusted_value > -200 && adjusted_value < 200) {
         return 0;
     } else {
         return adjusted_value;
     }
 }
 
+// void btn_callback(){
+//     if (gpio_get(BUTTON_JUMP_RED_PIN) == 1){
+//         int btn_red = 1;
+//         xQueueSend(xQueueBtn, &btn_red, portMAX_DELAY);
+//     }
+//     if (gpio_get(BUTTON_SWITCH_BLUE_PIN) == 1){
+//         int btn_id = 0;
+//         xQueueSend(xQueueBtn, &btn_id, portMAX_DELAY);
+//     }
+//     else if (gpio_get(BUTTON_SWITCH_BLUE_PIN) == 0){
+//         int btn_id = 1;
+//         xQueueSend(xQueueBtn, &btn_id, portMAX_DELAY);
+//     }
+// }
+
 void btn_callback(){
+    adc_t data;
     if (gpio_get(BUTTON_JUMP_RED_PIN) == 1){
-        int btn_id = 1;
-        xQueueSend(xQueueBtn, &btn_id, portMAX_DELAY);
+        data.val = 3;
+        data.axis = btn_id;
+        xQueueSend(xQueueAdc, &data, portMAX_DELAY);
     }
+    if (gpio_get(BUTTON_JUMP_RED_PIN) == 0){
+        data.val = 0;
+        data.axis = btn_id;
+        xQueueSend(xQueueAdc, &data, portMAX_DELAY);
+    }
+    if (gpio_get(BUTTON_SWITCH_BLUE_PIN) == 1){
+        btn_id = !btn_id;
+    }
+    // else if (gpio_get(BUTTON_SWITCH_BLUE_PIN) == 0){
+    //     data.axis = 1;
+    //     btn_id = 1;
+    //     xQueueSend(xQueueAdc, &data, portMAX_DELAY);
+    // }
 }
 
-void write_package(adc_t data, int person_id) {
-    if (data.val)
+// void write_package(adc_t data, int person_id) {
+//     if (data.val)
+//     int val = data.val;
+//     // int msb = val >> 8;
+//     // int lsb = val & 0xFF ;
+
+//     uart_putc_raw(uart0, data.axis); 
+//     // uart_putc_raw(uart0, lsb);
+//     // uart_putc_raw(uart0, msb); 
+//     uart_putc_raw(uart0, -1); 
+// }
+
+void write_package(adc_t data) {
     int val = data.val;
-    // int msb = val >> 8;
-    // int lsb = val & 0xFF ;
+    int msb = val >> 8;
+    int lsb = val & 0xFF ;
 
     uart_putc_raw(uart0, data.axis); 
-    // uart_putc_raw(uart0, lsb);
-    // uart_putc_raw(uart0, msb); 
+    uart_putc_raw(uart0, lsb);
+    uart_putc_raw(uart0, msb); 
     uart_putc_raw(uart0, -1); 
 }
 
@@ -90,16 +130,21 @@ void x_task(void *p) {
         v[4]=adc_read();
         int mediaX = ((v[4]+v[3]+v[2]+v[1]+v[0])/5);
 
-        data.val = adjust_scale(mediaX);
+        int coisa = adjust_scale(adc_read());
 
-        if(data.val > 100){ 
-            data.axis = 2;
+        if(coisa > 100){ 
+            data.val = 2;
+            data.axis = btn_id;
             xQueueSend(xQueueAdc, &data, portMAX_DELAY);
-        } else if (data.val < -100){
-            data.axis = 1;
+        } else if (coisa < -100){
+            data.val = 1;
+            data.axis = btn_id; 
+            xQueueSend(xQueueAdc, &data, portMAX_DELAY);
+        } else {
+            data.val = 0;
+            data.axis = btn_id;
             xQueueSend(xQueueAdc, &data, portMAX_DELAY);
         }
-
 
         vTaskDelay(pdMS_TO_TICKS(100));
     }
@@ -108,25 +153,26 @@ void x_task(void *p) {
 void uart_task(void *p) {
     adc_t data;
     int btn_red = 0;
-    int btn_id;
+    // int btn_id;
     while (1) {
-        xQueueReceive(xQueueAdc, &data, portMAX_DELAY);\
+        xQueueReceive(xQueueAdc, &data, portMAX_DELAY);
 
-        // recebe fila do botao na var btn_id
-        if (xQueueReceive(xQueueBtn, &btn_id, 0) == pdTRUE) {
-            if (btn_id == 1) {
-                btn_red = !btn_red;   
-            }
-        }
+        // // recebe fila do botao na var btn_id
+        // // if (xQueueReceive(xQueueBtn, &btn_id, 0) == pdTRUE) {
+        // //     if (btn_id == 1) {
+        // //         btn_red = !btn_red;   
+        // //     }
+        // // }
 
-        //printf("%d\n", data);
-        if (data.val != 0) write_package(data, btn_red);
+        // //printf("%d\n", data);
+        //if (data.val != 0) write_package(data, btn_red);
+        if (data.val != 0) write_package(data);
     }
 }
 
 
 
-void hc06_task(void *p) {
+void hc06_task(void *p) {adc_read
     uart_init(HC06_UART_ID, HC06_BAUD_RATE);
     gpio_set_function(HC06_TX_PIN, GPIO_FUNC_UART);
     gpio_set_function(HC06_RX_PIN, GPIO_FUNC_UART);
@@ -156,11 +202,11 @@ int main() {
     gpio_pull_up(BUTTON_JUMP_RED_PIN);
     gpio_pull_up(BUTTON_SWITCH_BLUE_PIN);
 
-    printf("Start bluetooth task\n");
+    // printf("Start bluetooth task\n");BUTTON_SWITCH_BLUE_PIN;
 
-    xTaskCreate(hc06_task, "UART_Task 1", 4096, NULL, 1, NULL);
     xQueueAdc = xQueueCreate(32, sizeof(adc_t));
-
+    xQueueBtn = xQueueCreate(32, sizeof(uint64_t));
+    xTaskCreate(hc06_task, "UART_Task 1", 4096, NULL, 1, NULL);
     xTaskCreate(x_task, "x_task", 4096, NULL, 1, NULL);
     xTaskCreate(uart_task, "uart_task", 4096, NULL, 1, NULL);
     

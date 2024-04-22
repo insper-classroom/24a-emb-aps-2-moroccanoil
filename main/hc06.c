@@ -61,7 +61,7 @@ bool hc06_init(char name[], char pin[]) {
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
     printf("Connected \n");
-i
+
     vTaskDelay(pdMS_TO_TICKS(1000));
     printf("set name\n");
     while (hc06_set_name(name) == false) {
