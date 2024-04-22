@@ -72,14 +72,17 @@ int adjust_scale(int adc_value) {
 void btn_callback(){
     adc_t data;
     if (gpio_get(BUTTON_JUMP_RED_PIN) == 1){
-        btn_value = 3;
+        data.val = 3;
+        data.axis = btn_axis;
     }
-    if (gpio_get(BUTTON_JUMP_RED_PIN) == 0){
-        btn_value = 0;
-    }
+    // if (gpio_get(BUTTON_JUMP_RED_PIN) == 0){
+    //     data.val = 0;
+    //     data.axis = btn_axis;
+    // }
     if (gpio_get(BUTTON_SWITCH_BLUE_PIN) == 1){
         btn_axis = !btn_axis;
     }
+    xQueueSend(xQueueAdc, &data, portMAX_DELAY);    
     // else if (gpio_get(BUTTON_SWITCH_BLUE_PIN) == 0){
     //     data.axis = 1;
     //     btn_axis = 1;
@@ -154,12 +157,12 @@ void x_task(void *p) {
 }
 }
 
-void btn_task() {
-    adc_t data;
-    data.val = btn_value;
-    data.axis = btn_axis;
-    xQueueSend(xQueueAdc, &data, portMAX_DELAY);
-}
+// void btn_task() {
+//     adc_t data;
+//     data.val = btn_value;
+//     data.axis = btn_axis;
+//     xQueueSend(xQueueAdc, &data, portMAX_DELAY);
+// }
 
 void uart_task(void *p) {
     adc_t data;
@@ -221,7 +224,7 @@ int main() {
     xTaskCreate(hc06_task, "UART_Task 1", 4096, NULL, 1, NULL);
     xTaskCreate(x_task, "x_task", 4096, NULL, 1, NULL);
     xTaskCreate(uart_task, "uart_task", 4096, NULL, 1, NULL);
-    xTaskCreate(btn_task, "btn_task", 4096, NULL, 1, NULL);
+    //xTaskCreate(btn_task, "btn_task", 4096, NULL, 1, NULL);
     
     
     vTaskStartScheduler();
