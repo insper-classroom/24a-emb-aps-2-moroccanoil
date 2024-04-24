@@ -20,7 +20,7 @@
 // const int HC06_RX_PIN = 5;
 
 const int BUTTON_JUMP_RED_PIN = 21;
-const int BUTTON_SWITCH_BLUE_PIN = 16;
+const int BUTTON_SWITCH_BLUE_PIN = 20;
 
 const int LED_RED_PIN = 7;
 const int LED_BLUE_PIN = 6;
@@ -54,55 +54,20 @@ int adjust_scale(int adc_value) {
     }
 }
 
-// void btn_callback(){
-//     if (gpio_get(BUTTON_JUMP_RED_PIN) == 1){
-//         int btn_red = 1;
-//         xQueueSend(xQueueBtn, &btn_red, portMAX_DELAY);
-//     }
-//     if (gpio_get(BUTTON_SWITCH_BLUE_PIN) == 1){
-//         int btn_axis = 0;
-//         xQueueSend(xQueueBtn, &btn_axis, portMAX_DELAY);
-//     }
-//     else if (gpio_get(BUTTON_SWITCH_BLUE_PIN) == 0){
-//         int btn_axis = 1;
-//         xQueueSend(xQueueBtn, &btn_axis, portMAX_DELAY);
-//     }
-// }
 
-void btn_callback(uint gpio, uint32_t events){
+
+void btn_callback(){
     adc_t data;
-    if (events & GPIO_IRQ_EDGE_FALL){
-        if (gpio == BUTTON_JUMP_RED_PIN){
-        data.val = 3;
-        data.axis = btn_axis;
+    if (gpio_get(BUTTON_JUMP_RED_PIN) == 1){
+        btn_value = 3;
     }
-    
-    if (gpio == BUTTON_SWITCH_BLUE_PIN){
+    if (gpio_get(BUTTON_JUMP_RED_PIN) == 0){
+        btn_value = 0;
+    }
+    if (gpio_get(BUTTON_SWITCH_BLUE_PIN) == 1){
         btn_axis = !btn_axis;
-        data.val = 0;
     }
-        
-    }
-
-    if (events & GPIO_IRQ_EDGE_RISE){
-        if (gpio == BUTTON_JUMP_RED_PIN){
-        data.val = 0;
-        data.axis = btn_axis;
-    }
-    }
-        
-    
-    xQueueSend(xQueueAdc, &data, portMAX_DELAY);
-    // xQueueSendFromISR(xQueueAdc, &data, portMAX_DELAY); 
-    
-    // else if (gpio_get(BUTTON_SWITCH_BLUE_PIN) = 0){
-    //     data.axis = 1;
-    //     btn_axis = 1;
-    //     xQueueSend(xQueueAdc, &data, portMAX_DELAY);
-    // }
 }
-
-
 
 void write_package(adc_t data) {
     int val = data.val;
@@ -113,20 +78,16 @@ void write_package(adc_t data) {
     uart_putc_raw(uart0, lsb);
     uart_putc_raw(uart0, msb); 
     uart_putc_raw(uart0, -1); 
-    // printf("Data: %d\n", data.val);
-    
 }
 
 void x_task(void *p) {
-    adc_t data;
-    // if (gpio_get(BUTTON_JUMP_RED_PIN) == 0){
-    //     data.val = 0;
-    //     data.axis = btn_axis;
-    //     xQueueSend(xQueueAdc, &data, portMAX_DELAY);
-    // }
-    // if (gpio_get(BUTTON_SWITCH_BLUE_PIN) == 1){
-    //     btn_axis = !btn_axis;}
-        
+    adc_t data;if (gpio_get(BUTTON_JUMP_RED_PIN) == 0){
+        data.val = 0;
+        data.axis = btn_axis;
+        xQueueSend(xQueueAdc, &data, portMAX_DELAY);
+    }
+    if (gpio_get(BUTTON_SWITCH_BLUE_PIN) == 1){
+        btn_axis = !btn_axis;
     adc_init();
     adc_gpio_init(ADC0_X);
 
@@ -160,24 +121,33 @@ void x_task(void *p) {
 
         vTaskDelay(pdMS_TO_TICKS(100));
     }
-
+}
 }
 
-// void btn_task() {
-//     adc_t data;
-//     data.val = btn_value;
-//     data.axis = btn_axis;
-//     xQueueSend(xQueueAdc, &data, portMAX_DELAY);
-// }
+void btn_task() {
+    adc_t data;
+    data.val = btn_value;
+    data.axis = btn_axis;
+    xQueueSend(xQueueAdc, &data, portMAX_DELAY);
+}
 
 void uart_task(void *p) {
     adc_t data;
     int btn_red = 0;
     // int btn_axis;
     while (1) {
-        if (xQueueReceive(xQueueAdc, &data, portMAX_DELAY) == pdTRUE) {
-            write_package(data);
-        }
+        xQueueReceive(xQueueAdc, &data, portMAX_DELAY);
+
+        // // recebe fila do botao na var btn_axis
+        // // if (xQueueReceive(xQueueBtn, &btn_axis, 0) == pdTRUE) {
+        // //     if (btn_axis == 1) {
+        // //         btn_red = !btn_red;   
+        // //     }
+        // // }
+
+        // //printf("%d\n", data);
+        //if (data.val != 0) write_package(data, btn_red);
+        if (data.val != 0) write_package(data);
     }
 }
 
@@ -213,10 +183,6 @@ int main() {
 
     gpio_pull_up(BUTTON_JUMP_RED_PIN);
     gpio_pull_up(BUTTON_SWITCH_BLUE_PIN);
-    
-    gpio_set_irq_enabled_with_callback(BUTTON_JUMP_RED_PIN, GPIO_IRQ_EDGE_FALL | GPIO_IRQ_EDGE_RISE , true, &btn_callback);
-                                    
-    gpio_set_irq_enabled(BUTTON_SWITCH_BLUE_PIN, GPIO_IRQ_EDGE_FALL, true);
 
     // printf("Start bluetooth task\n");BUTTON_SWITCH_BLUE_PIN;
 
@@ -225,10 +191,15 @@ int main() {
     xTaskCreate(hc06_task, "UART_Task 1", 4096, NULL, 1, NULL);
     xTaskCreate(x_task, "x_task", 4096, NULL, 1, NULL);
     xTaskCreate(uart_task, "uart_task", 4096, NULL, 1, NULL);
+    xTaskCreate(btn_task, "btn_task", 4096, NULL, 1, NULL);
     
     
     vTaskStartScheduler();
 
+    gpio_set_irq_enabled_with_callback(BUTTON_JUMP_RED_PIN, GPIO_IRQ_EDGE_FALL, true,
+                                     &btn_callback);
+                                    
+    gpio_set_irq_enabled(BUTTON_SWITCH_BLUE_PIN, GPIO_IRQ_EDGE_FALL, true);
 
     while (true)
         ;

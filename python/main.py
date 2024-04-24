@@ -1,7 +1,9 @@
 import serial
 import uinput
+from time import sleep
 
 ser = serial.Serial('/dev/ttyACM0', 115200)
+# ser = serial.Serial('/dev/rfcomm0', 115200)
 
 # Create new keyboard device
 device = uinput.Device([
@@ -15,7 +17,7 @@ device = uinput.Device([
 
 
 def parse_data(data):
-    axis = data[0]  # 0 for X, 1 for Y
+    axis = data[0]  
     value = int.from_bytes(data[1:3], byteorder='little', signed=True)
     print(f"Received data: {data}")
     print(f"axis: {axis}, value: {value}")
@@ -28,9 +30,9 @@ def press_key(axis, value):
             sleep(0.1)
             device.emit(uinput.KEY_A, 0)
         
-        if value +10*axis == 10:
+        if value +10*axis == 11:
             device.emit(uinput.KEY_LEFT, 1)
-            sleep
+            
             device.emit(uinput.KEY_LEFT, 0)
     
     if value == 2:
@@ -38,8 +40,7 @@ def press_key(axis, value):
             device.emit(uinput.KEY_D, 1)
             sleep(0.1)
             device.emit(uinput.KEY_D, 0)
-        
-        if value +10*axis == 20:
+        if value +10*axis == 12:
             device.emit(uinput.KEY_RIGHT, 1)
             sleep(0.1)
             device.emit(uinput.KEY_RIGHT, 0)
@@ -51,7 +52,7 @@ def press_key(axis, value):
             sleep(0.1)
             device.emit(uinput.KEY_W, 0)
         
-        if value +10*axis == 30:
+        if value +10*axis == 13:
             device.emit(uinput.KEY_UP, 1)
             sleep(0.1)
             device.emit(uinput.KEY_UP, 0)
