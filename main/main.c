@@ -183,6 +183,13 @@ void hc06_task(void *p) {
     gpio_set_function(HC06_TX_PIN, GPIO_FUNC_UART);
     gpio_set_function(HC06_RX_PIN, GPIO_FUNC_UART);
     hc06_init("eu_tentei", "1234");
+    // pisca led verde
+    gpio_put(LED_GREEN_PIN, 1);
+    gpio_put(LED_GREEN_PIN, 0);
+    gpio_put(LED_GREEN_PIN, 1);
+    gpio_put(LED_GREEN_PIN, 0);
+    gpio_put(LED_GREEN_PIN, 1);
+    gpio_put(LED_GREEN_PIN, 0);
 
     while (true) {
         vTaskDelay(pdMS_TO_TICKS(100));
